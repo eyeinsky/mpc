@@ -16,22 +16,67 @@ extra-doc-files:    CHANGELOG.md
 common warnings
     ghc-options: -Wall
 
+common language
+    default-language: GHC2021
+    default-extensions:
+        DerivingStrategies
+        LambdaCase
+        NoImplicitPrelude
+        DerivingVia
+
 library
     import:           warnings
-    exposed-modules:  MyLib
-    -- other-modules:
-    -- other-extensions:
-    build-depends:    base ^>=4.18.2.1
+    import:           language
+    exposed-modules:
+      , LocalPrelude
+      , DSL
+      , Interpreters
+      , Interpreters.Socket
+      , Protocols
+    build-depends:
+      , mpc:network-simpler
+      , base ^>=4.18.2.1
+      , free
+      , mtl
+      , bytestring
+      , directory
+      , random
+      , network
     hs-source-dirs:   src
-    default-language: GHC2024
 
 executable mpc
     import:           warnings
+    import:           language
     main-is:          Main.hs
     build-depends:
-        base ^>=4.18.2.1,
-        mpc
+      , mpc
+      , mpc:network-simpler
 
+      , base
+      , mtl
+      , random
+      , optparse-applicative
+      , network
     hs-source-dirs:   app
-    default-language: GHC2024
 
+library network-simpler
+    import:           warnings
+    import:           language
+    hs-source-dirs:   network-simpler
+    exposed-modules:  NetworkSimpler
+    build-depends:
+      , base ^>=4.18.2.1
+      , network
+
+test-suite mpc-test
+    import:           warnings
+    import:           language
+    type:             exitcode-stdio-1.0
+    hs-source-dirs:   test
+    main-is:          Main.hs
+    build-depends:
+        base
+      , tasty-hedgehog
+      , tasty
+      , hedgehog
+      , mpc
