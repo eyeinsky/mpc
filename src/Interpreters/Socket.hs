@@ -58,22 +58,19 @@ connectedSocketConf getRandom logger left right = Conf
 
 mkLocalhostTcpCluster :: IO ((Conf, Conf, Conf), IO ())
 mkLocalhostTcpCluster = do
-  let createTCP' (h, p) = NS.createTCP h p 1
-      connectTCP' = uncurry NS.connectTCP
-
-      p12 = (NS.localhostIpv4, 30002)
-      p23 = (NS.localhostIpv4, 30003)
-      p31 = (NS.localhostIpv4, 30001)
+  let p12 = NS.Endpoint NS.localhost 30002
+      p23 = NS.Endpoint NS.localhost 30003
+      p31 = NS.Endpoint NS.localhost 30001
 
   -- listen on sockets
-  l31' <- createTCP' p31
-  l12' <- createTCP' p12
-  l23' <- createTCP' p23
+  l31' <- NS.createTCP' p31
+  l12' <- NS.createTCP' p12
+  l23' <- NS.createTCP' p23
 
   -- connect above created sockets
-  c31 <- connectTCP' p31
-  c12 <- connectTCP' p12
-  c23 <- connectTCP' p23
+  c31 <- NS.connectTCP' p31
+  c12 <- NS.connectTCP' p12
+  c23 <- NS.connectTCP' p23
 
   -- accept these connections
   l31 <- fst <$> N.accept l31'
@@ -131,7 +128,7 @@ wordToWord8s w = go w (8::Int) []
 connectedPair :: IO (N.Socket, N.Socket, N.PortNumber)
 connectedPair = do
   port <- fmap fromIntegral $ getStdRandom $ randomR @Word32 (32768, 60999)
-  let e = NS.Endpoint NS.localhostIpv4 port
+  let e = NS.Endpoint NS.localhost port
   l <- NS.createTCP' e
   s <- NS.connectTCP' e
   l' <- fst <$> N.accept l

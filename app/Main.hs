@@ -127,8 +127,8 @@ endpoint = O.eitherReader p
 
     host :: String -> Either String HostAddress
     host = \case
-      "localhost" -> Right localhostIpv4
-      "" -> Right localhostIpv4
+      "localhost" -> Right localhost
+      "" -> Right localhost
       str -> Left $ "No parse as host: " <> str
 
 metaEndpoint :: O.Mod O.ArgumentFields a

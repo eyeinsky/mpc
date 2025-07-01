@@ -1,6 +1,6 @@
 module DSL where
 
-import Prelude
+import LocalPrelude
 import System.Random qualified as Random
 import Control.Monad.Free
 

@@ -44,23 +44,21 @@ data Endpoint = Endpoint HostAddress PortNumber
 createTCP :: HostAddress -> PortNumber -> Int -> IO Socket
 createTCP ip port maxCount = startListen maxCount =<< createPrim Stream AF_INET (SockAddrInet port ip)
 
+createTCP' :: Endpoint -> IO Socket
 createTCP' (Endpoint h p) = createTCP h p 1
 
 connectTCP :: HostAddress -> PortNumber -> IO Socket
 connectTCP ip port = connectPrim Stream AF_INET (SockAddrInet port ip)
 
+connectTCP' :: Endpoint -> IO Socket
 connectTCP' (Endpoint h p) = connectTCP h p
 
 connectTcpLoop :: Endpoint -> (IOException -> IO ()) -> IO Socket
 connectTcpLoop e action = loop
   where
-    loop = do
-      c <- try $ connectTCP' e
-      case c of
-        Right c' -> return c'
-        Left e -> do
-          action e
-          loop
+    loop = try (connectTCP' e) >>= \case
+      Right c' -> return c'
+      Left e' -> action e' >> loop
 
 -- ** UDP
 
@@ -72,5 +70,5 @@ connectUDP ip port = connectPrim Datagram AF_INET (SockAddrInet port ip)
 
 -- * predefined
 
-localhostIpv4 :: HostAddress
-localhostIpv4 = 0x0100007f
+localhost :: HostAddress
+localhost = 0x0100007f

@@ -9,6 +9,7 @@ reshare v = do
   r' <- shiftLeft r
   return $ v + r - r'
 
+-- | Protocol to make the argument value public
 publish :: Word -> Program Word
 publish v = do
   vn <- shiftLeft v

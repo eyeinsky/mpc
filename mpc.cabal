@@ -31,6 +31,7 @@ library
       , LocalPrelude
       , DSL
       , Interpreters
+      , Interpreters.MVar
       , Interpreters.Socket
       , Protocols
     build-depends:
@@ -75,8 +76,9 @@ test-suite mpc-test
     hs-source-dirs:   test
     main-is:          Main.hs
     build-depends:
-        base
+        mpc
+      , base
       , tasty-hedgehog
       , tasty
       , hedgehog
-      , mpc
+      , network
