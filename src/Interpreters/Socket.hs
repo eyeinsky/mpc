@@ -1,6 +1,7 @@
 module Interpreters.Socket where
 
 import LocalPrelude
+import DSL
 
 import Data.List
 import Data.Bits
@@ -56,7 +57,7 @@ connectedSocketConf getRandom logger left right = Conf
   , getRandom
   , logger }
 
-mkLocalhostTcpCluster :: IO ((Conf, Conf, Conf), IO ())
+mkLocalhostTcpCluster :: IO (P3 Conf, IO ())
 mkLocalhostTcpCluster = do
   let p12 = NS.Endpoint NS.localhost 30002
       p23 = NS.Endpoint NS.localhost 30003
@@ -87,7 +88,7 @@ mkLocalhostTcpCluster = do
         -- N.close' s
         N.gracefulClose s 5000
 
-  return ((n1, n2, n3), close)
+  return (n1 :| n2 :| n3 :| Nil, close)
 
 -- | Receive from accepted socket.
 receiveReadable :: N.Socket -> IO Word

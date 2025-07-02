@@ -14,7 +14,7 @@ publish :: Word -> Program Word
 publish v = do
   vn <- shiftLeft v
   vp <- shiftRight v
-  return $ unshare (v, vn, vp)
+  return $ unshare $ v :| vn :| vp :| Nil
 
 multiply :: Word -> Word -> Program Word
 multiply a b = do

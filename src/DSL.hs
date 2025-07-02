@@ -28,15 +28,16 @@ msg str = liftF (Msg str ())
 
 -- * Shares
 
+type P3 = List (ToPeano 3)
 type Shared a = (a, a, a)
 
 class Share a where
-  share :: a -> IO (a, a, a)
-  unshare :: (a, a, a) -> a
+  share :: a -> IO (P3 a)
+  unshare :: P3 a -> a
 
 instance Share Word where
   share v = do
     a <- Random.getStdRandom Random.random
     b <- Random.getStdRandom Random.random
-    return (a, b, v - a - b)
-  unshare (r1, r2, r3) = r1 + r2 + r3
+    return $ a :| b :| (v - a - b) :| Nil
+  unshare (r1 :| r2 :| r3 :| Nil) = r1 + r2 + r3

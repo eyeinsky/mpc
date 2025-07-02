@@ -23,6 +23,8 @@ common language
         LambdaCase
         NoImplicitPrelude
         DerivingVia
+        DataKinds
+        GADTs
 
 library
     import:           warnings
@@ -36,6 +38,7 @@ library
       , Protocols
     build-depends:
       , mpc:network-simpler
+      , fixedlist
       , base ^>=4.18.2.1
       , free
       , mtl

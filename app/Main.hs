@@ -59,8 +59,8 @@ main = do
 
     Client_ (Client e1 e2 e3 arg1 arg2) -> do
       putStrLn "Creating shares"
-      (a1n1, a1n2, a1n3) <- share arg1
-      (a2n1, a2n2, a2n3) <- share arg2
+      a1n1 :| a1n2 :| a1n3 :| Nil <- share arg1
+      a2n1 :| a2n2 :| a2n3 :| Nil <- share arg2
 
       let
         connectNodes = do
@@ -88,7 +88,7 @@ main = do
         n1r <- Socket.receiveWord n1
         n2r <- Socket.receiveWord n2
         n3r <- Socket.receiveWord n3
-        return (n1r, n2r, n3r)
+        return $ n1r :| n2r :| n3r :| Nil
 
       print $ unshare r
 

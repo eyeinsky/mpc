@@ -41,16 +41,23 @@ main = Tasty.defaultMain $ Tasty.testGroup "MPC"
 prop_publish :: H.Property
 prop_publish = H.property $ do
   arg <- genSmall
-  (s1, s2, s3) <- liftIO $ do
+  s1 :| s2 :| s3 :| Nil <- liftIO $ do
     nodes <- MVar.nodeConfs dropLogs ioRandom
-    MVar.runNodesF1 nodes dropLogs Protocols.publish arg
+    MVar.runNodes nodes =<< fmap Protocols.publish <$> share arg
   arg === s1
   arg === s2
   arg === s3
 
 -- | Addition is the same in regular and MPC.
 prop_add :: H.Property
-prop_add = H.property $ testProtocol2 (\a b -> return $ a + b) (+) genSmall
+prop_add = H.property $ do
+  arg1 <- genSmall
+  arg2 <- genSmall
+  r <- liftIO $ do
+    nodes <- MVar.nodeConfs dropLogs ioRandom
+    programs <- zipWith (\a b -> return $ a + b) <$> share arg1 <*> share arg2
+    MVar.runNodes nodes programs
+  unshare r === arg1 + arg2
 
 -- * Interpreter tests
 
@@ -58,14 +65,14 @@ unitTest_unixDomainSocket :: H.Property
 unitTest_unixDomainSocket = unitTest $ do
   return ()
 
-prop_tcp :: IO (Conf, Conf, Conf) -> H.Property
+prop_tcp :: IO (P3 Conf) -> H.Property
 prop_tcp aquireIO = H.property $ do
   let add :: Word -> Word -> Program Word
       add a b = return $ a + b
-  (n1, n2, n3) <- liftIO aquireIO
+  tcpNodes <- liftIO aquireIO
   arg1 <- genBounded
   arg2 <- genBounded
-  res <- liftIO $ MVar.runNodesF2 [n1, n2, n3] dropLogs add arg1 arg2
+  res <- liftIO $ MVar.runNodes tcpNodes =<< zipWith add <$> share arg1 <*> share arg2
   unshare res === arg1 + arg2
 
 prop_tcpWords :: IO (N.Socket, N.Socket, N.PortNumber) -> H.Property
@@ -81,19 +88,6 @@ prop_tcpWords aquireIO = H.property $ do
   expected === got
 
 -- * Helpers
-
-testProtocol2
-  :: ( Share a, Share b, Eq b, Show b)
-  => (a -> a -> Program b)
-  -> (a -> a -> b)
-  -> (H.PropertyT IO a)
-  -> H.PropertyT IO ()
-testProtocol2 protocol oracle genArg = do
-  arg1 <- genArg
-  arg2 <- genArg
-  nodes <- liftIO $ MVar.nodeConfs dropLogs ioRandom
-  r <- liftIO $ MVar.runNodesF2 nodes dropLogs protocol arg1 arg2
-  unshare r === oracle arg1 arg2
 
 -- | Generate shares directly when initial values aren't required.
 genShares :: forall a . (Bounded a, Integral a, Show a, Share a) => H.PropertyT IO (P3 a)
