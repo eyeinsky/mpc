@@ -4,6 +4,7 @@ module LocalPrelude
   ) where
 
 import Prelude as Export hiding (init, head, last, reverse, zip, zip3, zipWith, zipWith3)
+import Numeric.Natural as Export
 import Control.Monad as Export
 import Control.Monad.IO.Class as Export
 import Text.Read as Export (readEither)

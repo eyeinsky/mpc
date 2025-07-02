@@ -8,12 +8,15 @@ import Test.Tasty qualified as Tasty
 import Test.Tasty.Hedgehog qualified as Tasty
 
 import Network.Socket qualified as N
+import NetworkSimpler qualified as NS
+import Control.Exception
 
 import LocalPrelude
 import DSL
 import Interpreters
 import Interpreters.MVar qualified as MVar
 import Interpreters.Socket qualified as Socket
+import Interpreters.Stats qualified as Stats
 import Protocols qualified
 
 
@@ -36,6 +39,7 @@ main = Tasty.defaultMain $ Tasty.testGroup "MPC"
     Tasty.testGroup "Runners" $
       [ Tasty.testProperty "TCP" (prop_tcp $ fst <$> aquireSockets)
       -- , Tasty.testProperty "UnixDomainSocket" unitTest_unixDomainSocket
+      , Tasty.testProperty "Stats" unitTest_stats
       ]
   ]
 
@@ -123,6 +127,41 @@ prop_tcpWords aquireIO = H.property $ do
   -- liftIO $ putStrLn note
   H.footnote note
   expected === got
+
+-- | Tests byte counts by inspecting the syntax and running TCP cluster.
+unitTest_stats :: H.Property
+unitTest_stats = unitTest $ do
+  -- by counting
+  let byCounting@(Stats.Stats sent received) = Stats.countBytes $ Protocols.multiply 1 2
+
+  -- by running
+  (tcpNodes, closeSockets, endpoints) <- liftIO $ Socket.mkLocalhostTcpClusterPrim
+  p "Got socekts"
+  let add :: Word -> Word -> Program Word
+      add a b = return $ a + b
+  before <- liftIO $ traverse NS.statsByDst endpoints
+  p "ss before"
+  _ <- liftIO . MVar.runNodes tcpNodes =<< zipWith add <$> genShares <*> genShares
+  p "ran TCP cluster"
+  liftIO $ sleep 4
+  p "slept 4"
+  after <- liftIO $ traverse NS.statsByDst endpoints
+  p "ss after"
+
+  -- compare
+  liftIO $ do
+    bracket (sleep 10000000) (const closeSockets) (\_ -> pure ())
+    closeSockets
+    putStrLn "closeSockets done"
+    print byCounting
+
+    putStrLn "before"
+    mapM_ print before
+
+    putStrLn "after"
+    mapM_ print after
+
+  where p = liftIO . putStrLn
 
 -- * Helpers
 

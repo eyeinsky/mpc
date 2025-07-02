@@ -36,6 +36,7 @@ library
       , Interpreters
       , Interpreters.MVar
       , Interpreters.Socket
+      , Interpreters.Stats
       , Protocols
     build-depends:
       , mpc:network-simpler

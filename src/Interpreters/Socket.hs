@@ -59,6 +59,11 @@ connectedSocketConf getRandom logger left right = Conf
 
 mkLocalhostTcpCluster :: IO (P3 Conf, IO ())
 mkLocalhostTcpCluster = do
+  (nodes, closeSockets, _) <- mkLocalhostTcpClusterPrim
+  return (nodes, closeSockets)
+
+mkLocalhostTcpClusterPrim :: IO (P3 Conf, IO (), P3 NS.Endpoint)
+mkLocalhostTcpClusterPrim = do
   let p12 = NS.Endpoint NS.localhost 30002
       p23 = NS.Endpoint NS.localhost 30003
       p31 = NS.Endpoint NS.localhost 30001
@@ -81,14 +86,18 @@ mkLocalhostTcpCluster = do
   let n1 = connectedSocketConf ioRandom putStrLn l31 c12
       n2 = connectedSocketConf ioRandom putStrLn l12 c23
       n3 = connectedSocketConf ioRandom putStrLn l23 c31
-      close = forM_ -- forConcurrently_
+      closeSockets = forM_
         [ c31, c12, c23
         , l31, l12, l23
         ] $ \s -> do
         -- N.close' s
         N.gracefulClose s 5000
 
-  return (n1 :| n2 :| n3 :| Nil, close)
+  return
+    ( n1 :| n2 :| n3 :| Nil
+    , closeSockets
+    , p12 :| p23 :| p31 :| Nil
+    )
 
 -- | Receive from accepted socket.
 receiveReadable :: N.Socket -> IO Word
