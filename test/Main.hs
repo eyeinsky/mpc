@@ -22,6 +22,8 @@ main = Tasty.defaultMain $ Tasty.testGroup "MPC"
   [ Tasty.testGroup "Protocols"
     [ Tasty.testProperty "Publish" prop_publish
     , Tasty.testProperty "Addition" prop_add
+    , Tasty.testProperty "ifThenElse" prop_ifThenElse
+    , Tasty.testProperty "ifThenElse2" prop_ifThenElse2
     ]
 
   , Tasty.withResource Socket.connectedPair (\(a, b, _) -> N.gracefulClose a 5000 >> N.gracefulClose b 5000) $ \aquireSockets ->
@@ -41,9 +43,7 @@ main = Tasty.defaultMain $ Tasty.testGroup "MPC"
 prop_publish :: H.Property
 prop_publish = H.property $ do
   arg <- genSmall
-  s1 :| s2 :| s3 :| Nil <- liftIO $ do
-    nodes <- MVar.nodeConfs dropLogs ioRandom
-    MVar.runNodes nodes =<< fmap Protocols.publish <$> share arg
+  s1 :| s2 :| s3 :| Nil <- runCluster =<< fmap Protocols.publish <$> share' arg
   arg === s1
   arg === s2
   arg === s3
@@ -53,11 +53,27 @@ prop_add :: H.Property
 prop_add = H.property $ do
   arg1 <- genSmall
   arg2 <- genSmall
-  r <- liftIO $ do
-    nodes <- MVar.nodeConfs dropLogs ioRandom
-    programs <- zipWith (\a b -> return $ a + b) <$> share arg1 <*> share arg2
-    MVar.runNodes nodes programs
+  r <- runCluster =<< zipWith (\a b -> return $ a + b) <$> share' arg1 <*> share' arg2
   unshare r === arg1 + arg2
+
+-- * If-then-else
+
+mkIfThenElse :: (Word -> Word -> Word -> Program Word) -> H.Property
+mkIfThenElse protocol = H.property $ do
+  bool' :: Bool <- H.forAll Gen.bool
+  let bool = if bool' then 1 else 0 :: Word
+  then_ <- genBounded
+  else_ <- genBounded
+  result <- runCluster =<< zipWith3 protocol <$> share' bool <*> share' then_ <*> share' else_
+  (if bool' then then_ else else_) === unshare result
+
+-- | If-then-else
+prop_ifThenElse :: H.Property
+prop_ifThenElse = mkIfThenElse Protocols.ifThenElse
+
+-- | Another implementation
+prop_ifThenElse2 :: H.Property
+prop_ifThenElse2 = mkIfThenElse Protocols.ifThenElse2
 
 -- * Interpreter tests
 
@@ -88,6 +104,15 @@ prop_tcpWords aquireIO = H.property $ do
   expected === got
 
 -- * Helpers
+
+runCluster :: MonadIO m => P3 (Program Word) -> m (P3 Word)
+runCluster programs = liftIO $ do
+  nodes <- MVar.nodeConfs dropLogs ioRandom
+  MVar.runNodes nodes programs
+
+-- | Convenience function to produce shares in any MonadIO monad.
+share' :: (MonadIO m, Share a) => a -> m (P3 a)
+share' = liftIO . share
 
 -- | Generate shares directly when initial values aren't required.
 genShares :: forall a . (Bounded a, Integral a, Show a, Share a) => H.PropertyT IO (P3 a)

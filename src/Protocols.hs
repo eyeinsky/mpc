@@ -23,3 +23,16 @@ multiply a b = do
   x' <- shiftRight x
   y' <- shiftLeft y
   return $ (x * y) + (x' * y) + (x' * y')
+
+-- | Branch on boolean represented as 0 or 1. Multiplying by it
+-- exactly preserves either then_ or else_ values.
+ifThenElse :: Word -> Word -> Word -> Program Word
+ifThenElse bool then_ else_ = do
+  res <- multiply bool (then_ - else_)
+  return (res + else_)
+
+ifThenElse2 :: Word -> Word -> Word -> Program Word
+ifThenElse2 bool then_ else_ = do
+  a <- bool `multiply` then_
+  b <- (1 - bool) `multiply` else_
+  return $ a + b
