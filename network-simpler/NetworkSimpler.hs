@@ -1,14 +1,17 @@
 module NetworkSimpler where
 
 import Prelude
+import Data.Function
 import Data.Functor
 import Data.Word
 import Data.Char
 import Data.List
+import Data.Maybe
 import Control.Applicative
 import Control.Monad
 import Control.Exception
 import Network.Socket as N
+import System.Process
 import Text.Read
 
 -- | Listen on type at address, with maxCount simultaneous connections.
@@ -110,3 +113,37 @@ connectUDP ip port = connectPrim Datagram AF_INET (SockAddrInet port ip)
 
 localhost :: HostAddress
 localhost = 0x0100007f
+
+-- * Measure
+
+type Dest = ((Endpoint, Endpoint, String, String, String, String), String)
+
+-- | Use ss to get bytes sent and received
+statsByDst :: Endpoint -> IO (Maybe Dest)
+statsByDst e = do
+  let cp = shell $ "ss -itpn dst = " <> show e
+  ssOut <- readCreateProcess cp ""
+  let matches = parseSs ssOut
+  return $ listToMaybe matches
+  where
+    parseSs :: String -> [Dest]
+    parseSs str = lines str
+      & tail
+      & tails
+      & map (take 2)
+      & mapMaybe (\case [a, b] -> Just (socketInfo a b, a <> "\n" <> b)
+                        _ -> Nothing)
+
+    socketInfo a b = let
+      ws = words a
+      ps = words b
+      in ( read $ ws !! 3 :: Endpoint -- from
+         , read $ ws !! 4 :: Endpoint -- to
+         , ws !! 5 -- name, pid, fd
+         , getProp "bytes_sent:" ps
+         , getProp "bytes_acked:" ps
+         , getProp "bytes_received:" ps
+         )
+
+    getProp name ws =
+      fromMaybe "" $ join $ find isJust $ map (stripPrefix name) ws

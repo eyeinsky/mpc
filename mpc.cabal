@@ -72,6 +72,7 @@ library network-simpler
     build-depends:
       , base ^>=4.18.2.1
       , network
+      , process
 
 test-suite mpc-test
     import:           warnings
