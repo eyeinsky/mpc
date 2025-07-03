@@ -2,9 +2,14 @@ module NetworkSimpler where
 
 import Prelude
 import Data.Functor
+import Data.Word
+import Data.Char
+import Data.List
+import Control.Applicative
+import Control.Monad
 import Control.Exception
 import Network.Socket as N
-
+import Text.Read
 
 -- | Listen on type at address, with maxCount simultaneous connections.
 createPrim :: SocketType -> Family -> SockAddr -> IO Socket
@@ -35,9 +40,42 @@ connectUnixDomainSocket :: FilePath -> IO Socket
 connectUnixDomainSocket p = connectPrim Stream AF_UNIX (SockAddrUnix p)
 
 -- * IP
+--
+-- | Endpoint is a host:port pair.
 
 data Endpoint = Endpoint HostAddress PortNumber
-  deriving Show
+
+instance Show Endpoint where
+  show (Endpoint host port) = ipStr <> ":" <> show port
+    where
+      (a, b, c, d) = hostAddressToTuple host
+      ipStr = intercalate "." $ map show [a, b, c, d]
+
+instance Read Endpoint where
+  readPrec = do
+    a <- word '.'
+    b <- word '.'
+    c <- word '.'
+    d <- word ':'
+    portStr <- many get <* (look >>= \case x : _ -> when (isDigit x) $ fail ""; _ -> pure ())
+    case readEither portStr of
+      Right port -> pure $ Endpoint (tupleToHostAddress (a, b, c, d)) port
+      Left err -> fail err
+
+    where
+      word :: Char -> ReadPrec Word8
+      word f = do
+        ds <- digits f
+        case readEither ds of
+          Right w -> return w
+          Left msg -> fail $ "Can't parse as Word8: " <> ds <> ", error: " <> msg
+
+      digits :: Char -> ReadPrec String
+      digits f = do
+        d <- get
+        if | isDigit d -> (d :) <$> digits f
+           | d == f -> pure []
+           | otherwise -> fail $ "following character doesn't match expected " <> show f
 
 -- ** TCP
 
@@ -68,7 +106,7 @@ createUDP ip port maxCount = startListen maxCount =<< createPrim Datagram AF_INE
 connectUDP :: HostAddress -> PortNumber -> IO Socket
 connectUDP ip port = connectPrim Datagram AF_INET (SockAddrInet port ip)
 
--- * predefined
+-- * Constants
 
 localhost :: HostAddress
 localhost = 0x0100007f

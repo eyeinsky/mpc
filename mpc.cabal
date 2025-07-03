@@ -25,6 +25,7 @@ common language
         DerivingVia
         DataKinds
         GADTs
+        MultiWayIf
 
 library
     import:           warnings
