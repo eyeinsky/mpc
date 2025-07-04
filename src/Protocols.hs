@@ -36,3 +36,13 @@ ifThenElse2 bool then_ else_ = do
   a <- bool `multiply` then_
   b <- (1 - bool) `multiply` else_
   return $ a + b
+
+-- | Result is zero if v is zero.
+zeroTest :: Word -> Program Word
+zeroTest v = do
+  r <- random
+  multiply v r
+
+-- | Result is zero if args are equal.
+equal :: Word -> Word -> Program Word
+equal a b = zeroTest (a - b)

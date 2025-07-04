@@ -1,6 +1,6 @@
 module Main (main) where
 
-import Hedgehog ((===))
+import Hedgehog ((===), (/==))
 import Hedgehog qualified as H
 import Hedgehog.Gen qualified as Gen
 import Hedgehog.Range qualified as Range
@@ -24,6 +24,8 @@ main = Tasty.defaultMain $ Tasty.testGroup "MPC"
     , Tasty.testProperty "Addition" prop_add
     , Tasty.testProperty "ifThenElse" prop_ifThenElse
     , Tasty.testProperty "ifThenElse2" prop_ifThenElse2
+    , Tasty.testProperty "zeroTest" prop_zeroTest
+    , Tasty.testProperty "equal" prop_equal
     ]
 
   , Tasty.withResource Socket.connectedPair (\(a, b, _) -> N.gracefulClose a 5000 >> N.gracefulClose b 5000) $ \aquireSockets ->
@@ -55,6 +57,25 @@ prop_add = H.property $ do
   arg2 <- genSmall
   r <- runCluster =<< zipWith (\a b -> return $ a + b) <$> share' arg1 <*> share' arg2
   unshare r === arg1 + arg2
+
+prop_zeroTest :: H.Property
+prop_zeroTest = H.property $ do
+  arg :: Word <- H.forAll $ Gen.choice
+    [ pure 0
+    , Gen.integral $ Range.linear minBound maxBound ]
+  r :: P3 Word <- runCluster =<< fmap Protocols.zeroTest <$> share' arg
+  (unshare r == 0) === (arg == 0) -- result is zero if arg is zero
+
+prop_equal :: H.Property
+prop_equal = H.property $ do
+  (arg1, arg2) <- H.forAll $ Gen.choice
+    [ (\a -> (a, a)) <$> Gen.integral (Range.linear minBound maxBound)
+    , (,) <$> Gen.integral (Range.linear minBound maxBound) <*> Gen.integral (Range.linear minBound maxBound)
+    ]
+  r <- runCluster =<< zipWith Protocols.equal <$> share' arg1 <*> share' arg2
+  let expected = arg1 == arg2
+      result = unshare r == 0 -- Protocol.equal: "result is zero if args were equal"
+  expected === result
 
 -- * If-then-else
 
